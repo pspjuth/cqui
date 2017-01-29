@@ -23,6 +23,7 @@ local MODDED_LENS_ID:table = {
   WONDER = 8;
   ADJACENCY_YIELD = 9;
   SCOUT = 10;
+  NATURALIST = 11;
 };
 
 -- Should the builder lens auto apply, when a builder is selected.
@@ -235,6 +236,7 @@ function OnToggleLensList()
     Controls.CityOverlap6LensButton:SetCheck(false);
     Controls.ArchaeologistLensButton:SetCheck(false);
     Controls.BuilderLensButton:SetCheck(false);
+    Controls.NaturalistLensButton:SetCheck(false);
     if UI.GetInterfaceMode() == InterfaceModeTypes.VIEW_MODAL_LENS then
       UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
     end
@@ -576,6 +578,29 @@ function ToggleScoutLens()
 end
 
 -- ===========================================================================
+function ToggleNaturalistLens()
+  if Controls.NaturalistLensButton:IsChecked() then
+    SetActiveModdedLens(MODDED_LENS_ID.NATURALIST);
+
+    -- Check if the appeal lens is already active
+    if UILens.IsLayerOn(LensLayers.HEX_COLORING_APPEAL_LEVEL) then
+      -- Unapply the appeal lens, so it can be cleared from the screen
+      UILens.SetActive("Default");
+    end
+
+    UILens.SetActive("Appeal");
+
+    RefreshInterfaceMode();
+  else
+    m_shouldCloseLensMenu = false;
+    if UI.GetInterfaceMode() == InterfaceModeTypes.VIEW_MODAL_LENS then
+      UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
+    end
+    SetActiveModdedLens(MODDED_LENS_ID.NONE);
+  end
+end
+
+-- ===========================================================================
 function ToggleGrid()
   bGridOn = not bGridOn;
   UI.ToggleGrid( bGridOn );
@@ -658,6 +683,8 @@ function OnLensLayerOn( layerNum:number )
       SetAdjacencyYieldLens();
     elseif currentModdedLens == MODDED_LENS_ID.SCOUT then
       SetScoutLens();
+    elseif currentModdedLens == MODDED_LENS_ID.NATURALIST then
+      SetNaturalistLens();
     end
     UI.PlaySound("UI_Lens_Overlay_On");
   elseif layerNum == LensLayers.HEX_COLORING_GOVERNMENT then
@@ -1412,6 +1439,70 @@ function ShowScoutLens()
   UILens.ToggleLayerOn(LensLayers.HEX_COLORING_APPEAL_LEVEL);
 end
 
+-- ===========================================================================
+function SetNaturalistLens()
+  -- Check required to work properly with hotkey.
+  -- print("Highlight Naturalist Lens Hexes");
+  local mapWidth, mapHeight = Map.GetGridSize();
+
+  local OkColor:number = UI.GetColorValue("COLOR_OK_NATURALIST_LENS");
+  local FixableColor:number = UI.GetColorValue("COLOR_FIXABLE_NATURALIST_LENS");
+  local localPlayer:number = Game.GetLocalPlayer();
+  local localPlayerVis:table = PlayersVisibility[localPlayer];
+
+  local fixableHexes:table = {};
+  local okHexes:table = {};
+
+  for i = 0, (mapWidth * mapHeight) - 1, 1 do
+    local pPlot:table = Map.GetPlotByIndex(i);
+    local improve:boolean = false;
+    local good:boolean = false;
+
+    -- Base requirements
+    if plotHasNaturalWonder(pPlot) then
+      good = true;
+    elseif plotHasMountain(pPlot) then
+      good = true;
+    elseif pPlot:GetAppeal() >= 2 then
+      good = true;
+    end
+    
+    -- Blocking changes
+    if plotHasWonder(pPlot) then
+      good = false;
+    elseif plotHasDistrict(pPlot) then
+      good = false;
+    elseif pPlot:IsNationalPark() then
+      good = false;
+    end
+
+    -- Obstacles that can be delt with
+    -- An improvement can be removed
+    if plotHasImprovement(pPlot) then
+      improve = true;
+    end
+    -- Ownership can change
+    if pPlot:GetOwner() ~= Game.GetLocalPlayer() then
+      improve = true;
+    end
+
+    if good and localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) then
+      if improve then
+        table.insert(fixableHexes, i)
+      else
+        table.insert(okHexes, i)
+      end
+    end
+  end
+
+  if table.count(fixableHexes) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, fixableHexes, FixableColor );
+  end
+  if table.count(okHexes) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, okHexes, OkColor );
+  end
+end
+
 -- Helper functions ===========================================================
 function SetActiveModdedLens(lensID)
   m_CurrentModdedLensOn = lensID;
@@ -1469,6 +1560,14 @@ end
 function plotHasHill(plot)
   local terrainInfo = GameInfo.Terrains[plot:GetTerrainType()];
   if terrainInfo ~= nil and terrainInfo.Hills then
+    return true
+  end
+  return false;
+end
+
+function plotHasMountain(plot)
+  local terrainInfo = GameInfo.Terrains[plot:GetTerrainType()];
+  if terrainInfo ~= nil and terrainInfo.Mountain then
     return true
   end
   return false;
@@ -2234,6 +2333,7 @@ function OnInterfaceModeChanged(eOldMode:number, eNewMode:number)
       Controls.CityOverlap6LensButton:SetCheck(false);
       Controls.ArchaeologistLensButton:SetCheck(false);
       Controls.BuilderLensButton:SetCheck(false);
+      Controls.NaturalistLensButton:SetCheck(false);
 
       if GetCurrentModdedLens() ~= MODDED_LENS_ID.NONE then
         ClearModdedLens()
@@ -2485,6 +2585,7 @@ function Initialize()
   Controls.CityOverlap6LensButton:RegisterCallback( Mouse.eLClick, ToggleCityOverlap6Lens );
   Controls.ArchaeologistLensButton:RegisterCallback( Mouse.eLClick, ToggleArchaeologistLens );
   Controls.BuilderLensButton:RegisterCallback( Mouse.eLClick, ToggleBuilderLens );
+  Controls.NaturalistLensButton:RegisterCallback( Mouse.eLClick, ToggleNaturalistLens );
 
   Controls.AppealLensButton:RegisterCallback( Mouse.eLClick, ToggleAppealLens );
   Controls.ContinentLensButton:RegisterCallback( Mouse.eLClick, ToggleContinentLens );
