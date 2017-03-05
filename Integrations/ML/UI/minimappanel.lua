@@ -1441,15 +1441,14 @@ end
 
 -- ===========================================================================
 function SetNaturalistLens()
-  -- Check required to work properly with hotkey.
-  -- print("Highlight Naturalist Lens Hexes");
-  local mapWidth, mapHeight = Map.GetGridSize();
-
+  --print("Show Naturalist lens")
+  local localPlayer:number = Game.GetLocalPlayer();
+  local parkPlotColor:number = UI.GetColorValue("COLOR_PARK_NATURALIST_LENS");
   local OkColor:number = UI.GetColorValue("COLOR_OK_NATURALIST_LENS");
   local FixableColor:number = UI.GetColorValue("COLOR_FIXABLE_NATURALIST_LENS");
-  local localPlayer:number = Game.GetLocalPlayer();
+  local rawParkPlots:table = Game.GetNationalParks():GetPossibleParkTiles(localPlayer);
   local localPlayerVis:table = PlayersVisibility[localPlayer];
-
+  local mapWidth, mapHeight = Map.GetGridSize();
   local fixableHexes:table = {};
   local okHexes:table = {};
 
@@ -1500,6 +1499,9 @@ function SetNaturalistLens()
   end
   if table.count(okHexes) > 0 then
     UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, okHexes, OkColor );
+  end
+  if table.count(rawParkPlots) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, rawParkPlots, parkPlotColor );
   end
 end
 

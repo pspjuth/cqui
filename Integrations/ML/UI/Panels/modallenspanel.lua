@@ -296,8 +296,9 @@ end
 function ShowNaturalistLensKey()
 	m_KeyStackIM: ResetInstances();
 
+	local parkNaturalistLens     :number = UI.GetColorValue("COLOR_PARK_NATURALIST_LENS");
+	AddKeyEntry("LOC_TOOLTIP_NATURALIST_LENS_NPARK", parkNaturalistLens);
 	AddKeyEntry("LOC_TOOLTIP_NATURALIST_LENS_OK", UI.GetColorValue("COLOR_OK_NATURALIST_LENS"));
-
 	AddKeyEntry("LOC_TOOLTIP_NATURALIST_LENS_FIXABLE", UI.GetColorValue("COLOR_FIXABLE_NATURALIST_LENS"));
 
 	Controls.KeyPanel:SetHide(false);

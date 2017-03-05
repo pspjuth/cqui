@@ -131,7 +131,10 @@
       <Text>Naturalist</Text>
     </Row>
     <Row Tag="LOC_HUD_NATURALIST_LENS_TOOLTIP">
-      <Text>Highlights what hexes are suitable for National Parks</Text>
+      <Text>Highlights places where National Parks can be built</Text>
+    </Row>
+    <Row Tag="LOC_TOOLTIP_NATURALIST_LENS_NPARK">
+      <Text>Area is ok for National Park</Text>
     </Row>
     <Row Tag="LOC_TOOLTIP_NATURALIST_LENS_OK">
       <Text>Tile is ok for National Park</Text>
