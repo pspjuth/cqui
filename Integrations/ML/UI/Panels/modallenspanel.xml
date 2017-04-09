@@ -18,7 +18,7 @@
     <Line																Start="20,16"			End="210,16"		Color="55,95,126,255" Width="2" />
     <Label															Anchor="C,T"			Offset="0,20"		Style="FontFlair16" SmallCaps="20" String="LOC_TREE_KEY" Color0="78,119,151,255" Color1="0,0,0,0" Color2="25,65,96,255" />
     <Line																Start="20,40"			End="210,40"		Color="55,95,126,255" Width="2" />
-    <ScrollPanel ID="KeyScrollPanel" Offset="16,54" Size="parent-45,204" Style="ScrollPanelWithRightBar">
+    <ScrollPanel ID="KeyScrollPanel" Offset="16,54" Size="parent-45,204" AutoSize="Vertical" Style="ScrollPanelWithRightBar">
       <Stack ID="KeyStack" StackGrowth="Down" StackPadding="6"/>
     </ScrollPanel>
   </Grid>
