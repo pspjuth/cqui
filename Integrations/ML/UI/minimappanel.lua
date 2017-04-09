@@ -283,6 +283,7 @@ end
 function ToggleContinentLens()
   if Controls.ContinentLensButton:IsChecked() then
     UILens.SetActive("Continent");
+    RefreshInterfaceMode();
   else
     RefreshInterfaceMode();
     m_shouldCloseLensMenu = false;
