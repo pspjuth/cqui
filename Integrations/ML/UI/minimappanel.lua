@@ -937,6 +937,7 @@ function SetBuilderLensHexes()
   -- Check required to work properly with hotkey.
   -- print("Highlight Builder Lens Hexes");
   local mapWidth, mapHeight = Map.GetGridSize();
+  local localPlayer:number = Game.GetLocalPlayer();
 
   local ResourceColor:number = UI.GetColorValue("COLOR_RESOURCE_BUILDER_LENS");
   local HillColor:number = UI.GetColorValue("COLOR_HILL_BUILDER_LENS");
@@ -947,6 +948,7 @@ function SetBuilderLensHexes()
   local localPlayer:number = Game.GetLocalPlayer();
 
   local unworkableHexes:table = {};
+  local unreachableHexes:table = {};
   local repairableHexes:table = {};
   local resourceHexes:table = {};
   local featureHexes:table = {};
@@ -959,7 +961,19 @@ function SetBuilderLensHexes()
   for i = 0, (mapWidth * mapHeight) - 1, 1 do
     local pPlot:table = Map.GetPlotByIndex(i);
 
-    if pPlot:GetOwner() == Game.GetLocalPlayer() then
+    if pPlot:GetOwner() == localPlayer then
+      local localPlayerCities = Players[localPlayer]:GetCities();
+      -- Figure out if tile is within 3 steps from a city, i.e. useful
+      local farAway = true;
+      for _, pCity in localPlayerCities:Members() do
+        if pCity ~= nil and pCity:GetOwner() == localPlayer then
+          local pCityPlot = Map.GetPlot(pCity:GetX(), pCity:GetY())
+          if Map.GetPlotDistance(pPlot:GetX(), pPlot:GetY(), pCityPlot:GetX(), pCityPlot:GetY()) <= 3 then
+            farAway = false;
+            break;
+          end
+        end
+      end
       table.insert(localPlayerHexes, i);
 
       -- IMPASSABLE
@@ -1017,7 +1031,12 @@ function SetBuilderLensHexes()
       elseif plotHasResource(pPlot) and playerHasDiscoveredResource(localPlayer, i) then
         -- Is the resource improvable?
         if plotResourceImprovable(pPlot) then
-          table.insert(resourceHexes, i);
+          -- TBD: Only bonus resources should be farAway-sensitive
+          if farAway then
+            table.insert(unreachableHexes, i);
+          else
+            table.insert(resourceHexes, i);
+          end
         else
           table.insert(unworkableHexes, i);
         end
@@ -1025,10 +1044,14 @@ function SetBuilderLensHexes()
       -- HILL
       --------------------------------------
       elseif plotHasHill(pPlot) then
-        if plotNextToBuffingWonder(pPlot) then
-          table.insert(recomFeatureHexes, i)
+        if farAway then
+          table.insert(unworkableHexes, i);
         else
-          table.insert(hillHexes, i);
+          if plotNextToBuffingWonder(pPlot) then
+            table.insert(recomFeatureHexes, i)
+          else
+            table.insert(hillHexes, i);
+          end
         end
 
       -- FEATURE - Note: This includes natural wonders, since wonder is also a "feature". Check Features.xml
@@ -1047,10 +1070,14 @@ function SetBuilderLensHexes()
       -- GENERIC TILE
       --------------------------------------
       elseif plotCanHaveImprovement(localPlayer, i) then
-        if plotNextToBuffingWonder(pPlot) then
-          table.insert(recomFeatureHexes, i)
+        if farAway then
+          table.insert(unworkableHexes, i);
         else
-          table.insert(genericHexes, i)
+          if plotNextToBuffingWonder(pPlot) then
+            table.insert(recomFeatureHexes, i)
+          else
+            table.insert(genericHexes, i)
+          end
         end
 
       -- NOTHING TO DO
@@ -1063,7 +1090,7 @@ function SetBuilderLensHexes()
 
   -- Dim other hexes
   -- if table.count(localPlayerHexes) > 0 then
-  --  UILens.SetLayerHexesArea(LensLayers.MAP_HEX_MASK, localPlayer, localPlayerHexes );
+  --   UILens.SetLayerHexesArea(LensLayers.MAP_HEX_MASK, localPlayer, localPlayerHexes );
   -- end
 
   if table.count(repairableHexes) > 0 then
@@ -1087,8 +1114,14 @@ function SetBuilderLensHexes()
   if table.count(genericHexes) > 0 then
     UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, genericHexes, GenericColor );
   end
-  if table.count(unworkableHexes) > 0 then
-    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, unworkableHexes, NothingColor );
+  if false then
+    if table.count(unworkableHexes) > 0 then
+      UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, unworkableHexes, NothingColor );
+    end
+  else
+    if table.count(unreachableHexes) > 0 then
+      UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, unreachableHexes, NothingColor );
+    end
   end
 end
 
