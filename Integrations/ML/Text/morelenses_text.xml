@@ -19,6 +19,9 @@
     <Row Tag="LOC_TOOLTIP_BUILDER_LENS_FEATURE">
       <Text>Removable Feature</Text>
     </Row>
+    <Row Tag="LOC_TOOLTIP_BUILDER_LENS_RECOMFEATURE">
+      <Text>Recommended Feature</Text>
+    </Row>
   	<Row Tag="LOC_TOOLTIP_BUILDER_LENS_GENERIC">
   		<Text>Generic Tile</Text>
   	</Row>
