@@ -78,6 +78,11 @@ local m_wasMouseInMinimap       :boolean = false; -- Was the mouse over the mini
 local CQUI_MapSize = 512;
 
 local m_CurrentModdedLensOn     :number  = MODDED_LENS_ID.NONE;
+
+-- Resource Lens Specific Vars
+local ResourcesToHide:table = {};
+local ResourceCategoryToHide:table = {};
+
 -- ===========================================================================
 --  FUNCTIONS
 -- ===========================================================================
@@ -237,6 +242,9 @@ function OnToggleLensList()
     Controls.ArchaeologistLensButton:SetCheck(false);
     Controls.BuilderLensButton:SetCheck(false);
     Controls.NaturalistLensButton:SetCheck(false);
+
+    -- Side Menus
+    Controls.ResourceLensOptionsPanel:SetHide(true);
     if UI.GetInterfaceMode() == InterfaceModeTypes.VIEW_MODAL_LENS then
       UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
     end
@@ -499,12 +507,15 @@ function ToggleResourceLens()
 
     UILens.SetActive("Appeal");
 
+    Controls.ResourceLensOptionsPanel:SetHide(false);
+    RefreshResourcePicker();
     RefreshInterfaceMode();
   else
     m_shouldCloseLensMenu = false;
     if UI.GetInterfaceMode() == InterfaceModeTypes.VIEW_MODAL_LENS then
       UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
     end
+    Controls.ResourceLensOptionsPanel:SetHide(true);
     SetActiveModdedLens(MODDED_LENS_ID.NONE);
   end
 end
@@ -1245,31 +1256,26 @@ function SetResourceLens()
       if resourceType ~= nil and resourceType >= 0 then
         local resourceInfo = GameInfo.Resources[resourceType];
         if resourceInfo ~= nil then
-
           -- Check if resource is not in exclusion list
-          local resourceToExclude:boolean = false;
-          for i, rType in ipairs(ResourceExclusionList) do
-            if resourceInfo.ResourceType == rType then
-              resourceToExclude = true;
-              break
-            end
-          end
 
-          if not resourceToExclude then
+          if not has_value(ResourceExclusionList, resourceInfo.ResourceType) and (not has_value(ResourcesToHide, resourceInfo.ResourceType)) then
             table.insert(ResourcePlots, i);
-            if resourceInfo.ResourceClassType == "RESOURCECLASS_BONUS" then
+            if resourceInfo.ResourceClassType == "RESOURCECLASS_BONUS" and
+                not has_value(ResourceCategoryToHide, "Bonus") then
               if plotHasImprovement(pPlot) and not pPlot:IsImprovementPillaged() then
                 table.insert(ConnectedBonus, i)
               else
                 table.insert(NotConnectedBonus, i)
               end
-            elseif resourceInfo.ResourceClassType == "RESOURCECLASS_LUXURY" then
+            elseif resourceInfo.ResourceClassType == "RESOURCECLASS_LUXURY" and
+                    not has_value(ResourceCategoryToHide, "Luxury") then
               if plotHasImprovement(pPlot) and not pPlot:IsImprovementPillaged() then
                 table.insert(ConnectedLuxury, i)
               else
                 table.insert(NotConnectedLuxury, i)
               end
-            elseif resourceInfo.ResourceClassType == "RESOURCECLASS_STRATEGIC" then
+            elseif resourceInfo.ResourceClassType == "RESOURCECLASS_STRATEGIC" and
+                    not has_value(ResourceCategoryToHide, "Strategic") then
               if plotHasImprovement(pPlot) and not pPlot:IsImprovementPillaged() then
                 table.insert(ConnectedStrategic, i)
               else
@@ -1305,6 +1311,214 @@ function SetResourceLens()
   if table.count(NotConnectedBonus) > 0 then
     UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, NotConnectedBonus, BonusNConnectedColor );
   end
+end
+
+function RefreshResourcePicker()
+    print("Show Resource Picker")
+    local mapWidth, mapHeight = Map.GetGridSize();
+    local localPlayer   :number = Game.GetLocalPlayer();
+    local localPlayerVis:table = PlayersVisibility[localPlayer];
+
+    -- Resources to exclude in the "Resource Lens"
+    local ResourceExclusionList:table = {
+        "RESOURCE_ANTIQUITY_SITE",
+        "RESOURCE_SHIPWRECK"
+    }
+
+    local BonusResources:table = {}
+    local LuxuryResources:table = {}
+    local StrategicResources:table = {}
+
+    for i = 0, (mapWidth * mapHeight) - 1, 1 do
+        local pPlot:table = Map.GetPlotByIndex(i);
+
+        if localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) and playerHasDiscoveredResource(localPlayer, i) then
+            local resourceType = pPlot:GetResourceType()
+            if resourceType ~= nil and resourceType >= 0 then
+                local resourceInfo = GameInfo.Resources[resourceType];
+                if resourceInfo ~= nil then
+                    -- Check if resource is not in exclusion list
+                    if not has_value(ResourceExclusionList, resourceInfo.ResourceType) then
+                        if resourceInfo.ResourceClassType == "RESOURCECLASS_BONUS" then
+                            if not has_rInfo(BonusResources, resourceInfo.ResourceType) then
+                                table.insert(BonusResources, resourceInfo)
+                            end
+                        elseif resourceInfo.ResourceClassType == "RESOURCECLASS_LUXURY" then
+                            if not has_rInfo(LuxuryResources, resourceInfo.ResourceType) then
+                                table.insert(LuxuryResources, resourceInfo)
+                            end
+                        elseif resourceInfo.ResourceClassType == "RESOURCECLASS_STRATEGIC" then
+                            if not has_rInfo(StrategicResources, resourceInfo.ResourceType) then
+                                table.insert(StrategicResources, resourceInfo)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Controls.BonusResourcePickStack:DestroyAllChildren();
+    Controls.LuxuryResourcePickStack:DestroyAllChildren();
+    Controls.StrategicResourcePickStack:DestroyAllChildren();
+
+    -- Bonus Resources
+    if table.count(BonusResources) > 0 and
+            not has_value(ResourceCategoryToHide, "Bonus") then
+        for i, resourceInfo in ipairs(BonusResources) do
+            -- print(Locale.Lookup(resourceInfo.Name))
+            local resourcePickInstance:table = {};
+            ContextPtr:BuildInstanceForControl( "ResourcePickEntry", resourcePickInstance, Controls.BonusResourcePickStack );
+            resourcePickInstance.ResourceLabel:SetText("[ICON_" .. resourceInfo.ResourceType .. "]" .. Locale.Lookup(resourceInfo.Name));
+
+            if has_value(ResourcesToHide, resourceInfo.ResourceType) then
+                resourcePickInstance.ResourceCheckbox:SetCheck(false);
+            end
+
+            resourcePickInstance.ResourceCheckbox:RegisterCallback(Mouse.eLClick, function() HandleResourceCheckbox(resourcePickInstance, resourceInfo.ResourceType); end);
+        end
+    end
+
+    -- Luxury Resources
+    if table.count(LuxuryResources) > 0 and
+            not has_value(ResourceCategoryToHide, "Luxury") then
+        for i, resourceInfo in ipairs(LuxuryResources) do
+            -- print(Locale.Lookup(resourceInfo.Name))
+            local resourcePickInstance:table = {};
+            ContextPtr:BuildInstanceForControl( "ResourcePickEntry", resourcePickInstance, Controls.LuxuryResourcePickStack );
+            resourcePickInstance.ResourceLabel:SetText("[ICON_" .. resourceInfo.ResourceType .. "]" .. Locale.Lookup(resourceInfo.Name));
+
+            if has_value(ResourcesToHide, resourceInfo.ResourceType) then
+                resourcePickInstance.ResourceCheckbox:SetCheck(false);
+            end
+
+            resourcePickInstance.ResourceCheckbox:RegisterCallback(Mouse.eLClick, function() HandleResourceCheckbox(resourcePickInstance, resourceInfo.ResourceType); end);
+        end
+    end
+
+    -- Strategic Resources
+    if table.count(StrategicResources) > 0 and
+            not has_value(ResourceCategoryToHide, "Strategic") then
+        for i, resourceInfo in ipairs(StrategicResources) do
+            -- print(Locale.Lookup(resourceInfo.Name))
+            local resourcePickInstance:table = {};
+            ContextPtr:BuildInstanceForControl( "ResourcePickEntry", resourcePickInstance, Controls.StrategicResourcePickStack );
+            resourcePickInstance.ResourceLabel:SetText("[ICON_" .. resourceInfo.ResourceType .. "]" .. Locale.Lookup(resourceInfo.Name));
+
+            if has_value(ResourcesToHide, resourceInfo.ResourceType) then
+                resourcePickInstance.ResourceCheckbox:SetCheck(false);
+            end
+
+            resourcePickInstance.ResourceCheckbox:RegisterCallback(Mouse.eLClick, function() HandleResourceCheckbox(resourcePickInstance, resourceInfo.ResourceType); end);
+        end
+    end
+
+    -- Cleanup
+    Controls.BonusResourcePickStack:CalculateSize();
+    Controls.LuxuryResourcePickStack:CalculateSize();
+    Controls.StrategicResourcePickStack:CalculateSize();
+    Controls.ResourcePickList:CalculateSize();
+end
+
+function ToggleResourceLens_Bonus()
+    if not Controls.ShowBonusResource:IsChecked() then
+        print("Hide Bonus Resource")
+        ndup_insert(ResourceCategoryToHide, "Bonus")
+    else
+        print("Show Bonus Resource")
+        find_and_remove(ResourceCategoryToHide, "Bonus");
+    end
+
+    -- Assuming resource lens is already applied
+    UILens.ClearLayerHexes(LensLayers.HEX_COLORING_APPEAL_LEVEL);
+    RefreshResourcePicker();
+    SetResourceLens();
+end
+
+function ToggleResourceLens_Luxury()
+    if not Controls.ShowLuxuryResource:IsChecked() then
+        print("Hide Luxury Resource")
+        ndup_insert(ResourceCategoryToHide, "Luxury")
+    else
+        print("Show Luxury Resource")
+        find_and_remove(ResourceCategoryToHide, "Luxury");
+    end
+
+    -- Assuming resource lens is already applied
+    UILens.ClearLayerHexes(LensLayers.HEX_COLORING_APPEAL_LEVEL);
+    RefreshResourcePicker();
+    SetResourceLens();
+end
+
+function ToggleResourceLens_Strategic()
+    if not Controls.ShowStrategicResource:IsChecked() then
+        print("Hide Strategic Resource")
+        ndup_insert(ResourceCategoryToHide, "Strategic")
+    else
+        print("Show Strategic Resource")
+        find_and_remove(ResourceCategoryToHide, "Strategic");
+    end
+
+    -- Assuming resource lens is already applied
+    UILens.ClearLayerHexes(LensLayers.HEX_COLORING_APPEAL_LEVEL);
+    RefreshResourcePicker();
+    SetResourceLens();
+end
+
+function HandleResourceCheckbox(pControl, resourceType)
+    if not pControl.ResourceCheckbox:IsChecked() then
+        -- Don't show this resource
+        if not has_value(ResourcesToHide, resourceType) then
+            table.insert(ResourcesToHide, resourceType)
+        end
+    else
+        -- Show this resource
+        for i, rType in ipairs(ResourcesToHide) do
+            if rType == resourceType then
+                table.remove(ResourcesToHide, i)
+                break
+            end
+        end
+    end
+
+    -- Assuming resource lens is already applied
+    UILens.ClearLayerHexes(LensLayers.HEX_COLORING_APPEAL_LEVEL);
+    SetResourceLens();
+end
+
+function has_value (tab, val)
+    for index, value in ipairs (tab) do
+        if value == val then
+            return true
+        end
+    end
+
+    return false
+end
+
+function has_rInfo (tab, val)
+    for index, value in ipairs (tab) do
+        if value.ResourceType == val then
+            return true
+        end
+    end
+
+    return false
+end
+
+function find_and_remove(tab, val)
+    for i, item in ipairs(tab) do
+        if item == val then
+            table.remove(tab, i);
+            return
+        end
+    end
+end
+
+function ndup_insert(tab, val)
+    if not has_value(tab, val) then
+        table.insert(tab, val);
+    end
 end
 
 -- ===========================================================================
@@ -2395,6 +2609,9 @@ function OnInterfaceModeChanged(eOldMode:number, eNewMode:number)
       Controls.BuilderLensButton:SetCheck(false);
       Controls.NaturalistLensButton:SetCheck(false);
 
+      -- Side Menus
+      Controls.ResourceLensOptionsPanel:SetHide(true);
+
       if GetCurrentModdedLens() ~= MODDED_LENS_ID.NONE then
         ClearModdedLens()
       end
@@ -2646,6 +2863,11 @@ function Initialize()
   Controls.ArchaeologistLensButton:RegisterCallback( Mouse.eLClick, ToggleArchaeologistLens );
   Controls.BuilderLensButton:RegisterCallback( Mouse.eLClick, ToggleBuilderLens );
   Controls.NaturalistLensButton:RegisterCallback( Mouse.eLClick, ToggleNaturalistLens );
+
+  -- Resource Lens Picker
+  Controls.ShowBonusResource:RegisterCallback( Mouse.eLClick, ToggleResourceLens_Bonus );
+  Controls.ShowLuxuryResource:RegisterCallback( Mouse.eLClick, ToggleResourceLens_Luxury );
+  Controls.ShowStrategicResource:RegisterCallback( Mouse.eLClick, ToggleResourceLens_Strategic );
 
   Controls.AppealLensButton:RegisterCallback( Mouse.eLClick, ToggleAppealLens );
   Controls.ContinentLensButton:RegisterCallback( Mouse.eLClick, ToggleContinentLens );
