@@ -75,3 +75,11 @@ VALUES                  (   'COLOR_OK_NATURALIST_LENS',         '0',        '1',
 INSERT INTO Colors      (   Type,                               Red,        Green,      Blue,       Alpha)
 VALUES                  (   'COLOR_FIXABLE_NATURALIST_LENS',    '0.56',     '0.0',      '0.98',     '0.5');
 
+-- Naturalist Lens
+INSERT INTO Colors      (   Type,                               Red,        Green,      Blue,       Alpha)
+VALUES                  (   'COLOR_MILITARY_UNIT_LENS',         '1',        '0',        '0',        '0.5');
+INSERT INTO Colors      (   Type,                               Red,        Green,      Blue,       Alpha)
+VALUES                  (   'COLOR_SUPPORT_UNIT_LENS',          '0',        '1',        '0',        '0.5');
+INSERT INTO Colors      (   Type,                               Red,        Green,      Blue,       Alpha)
+VALUES                  (   'COLOR_CIVILIAN_UNIT_LENS',         '0',        '1',        '1',        '0.5');
+

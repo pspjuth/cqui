@@ -146,5 +146,22 @@
       <Text>Tile is ok, but something fixable is blocking</Text>
     </Row>
 
+    <!-- Unit Lens -->
+    <Row Tag="LOC_HUD_UNIT_LENS">
+      <Text>Unit</Text>
+    </Row>
+    <Row Tag="LOC_HUD_UNIT_LENS_TOOLTIP">
+      <Text>Highlights places where Units are stationed</Text>
+    </Row>
+    <Row Tag="LOC_TOOLTIP_UNIT_LENS_MILITARY">
+      <Text>Military</Text>
+    </Row>
+    <Row Tag="LOC_TOOLTIP_UNIT_LENS_SUPPORT">
+      <Text>Support</Text>
+    </Row>
+    <Row Tag="LOC_TOOLTIP_UNIT_LENS_CIVILIAN">
+      <Text>Civilian</Text>
+    </Row>
+
   </BaseGameText>
 </GameData>

@@ -24,6 +24,7 @@ local MODDED_LENS_ID:table = {
   ADJACENCY_YIELD = 9;
   SCOUT = 10;
   NATURALIST = 11;
+  UNIT = 12;
 };
 
 -- Should the builder lens auto apply, when a builder is selected.
@@ -242,6 +243,7 @@ function OnToggleLensList()
     Controls.ArchaeologistLensButton:SetCheck(false);
     Controls.BuilderLensButton:SetCheck(false);
     Controls.NaturalistLensButton:SetCheck(false);
+    Controls.UnitLensButton:SetCheck(false);
 
     -- Side Menus
     Controls.ResourceLensOptionsPanel:SetHide(true);
@@ -613,6 +615,29 @@ function ToggleNaturalistLens()
 end
 
 -- ===========================================================================
+function ToggleUnitLens()
+  if Controls.UnitLensButton:IsChecked() then
+    SetActiveModdedLens(MODDED_LENS_ID.UNIT);
+
+    -- Check if the appeal lens is already active
+    if UILens.IsLayerOn(LensLayers.HEX_COLORING_APPEAL_LEVEL) then
+      -- Unapply the appeal lens, so it can be cleared from the screen
+      UILens.SetActive("Default");
+    end
+
+    UILens.SetActive("Appeal");
+
+    RefreshInterfaceMode();
+  else
+    m_shouldCloseLensMenu = false;
+    if UI.GetInterfaceMode() == InterfaceModeTypes.VIEW_MODAL_LENS then
+      UI.SetInterfaceMode(InterfaceModeTypes.SELECTION);
+    end
+    SetActiveModdedLens(MODDED_LENS_ID.NONE);
+  end
+end
+
+-- ===========================================================================
 function ToggleGrid()
   bGridOn = not bGridOn;
   UI.ToggleGrid( bGridOn );
@@ -697,6 +722,8 @@ function OnLensLayerOn( layerNum:number )
       SetScoutLens();
     elseif currentModdedLens == MODDED_LENS_ID.NATURALIST then
       SetNaturalistLens();
+    elseif currentModdedLens == MODDED_LENS_ID.UNIT then
+      SetUnitLens();
     end
     UI.PlaySound("UI_Lens_Overlay_On");
   elseif layerNum == LensLayers.HEX_COLORING_GOVERNMENT then
@@ -1777,6 +1804,78 @@ function SetNaturalistLens()
   end
 end
 
+-- ===========================================================================
+function SetUnitLens()
+  --print("Show Unit lens")
+  local localPlayer:number = Game.GetLocalPlayer();
+  local unitPlotColor:number = UI.GetColorValue("COLOR_MILITARY_UNIT_LENS");
+  local supportPlotColor:number = UI.GetColorValue("COLOR_SUPPORT_UNIT_LENS");
+  local civilianPlotColor:number = UI.GetColorValue("COLOR_CIVILIAN_UNIT_LENS");
+  local localPlayerVis:table = PlayersVisibility[localPlayer];
+  local unitHexes:table = {};
+  local supportHexes:table = {};
+  local civilianHexes:table = {};
+
+  local pPlayer = Players[localPlayer];
+  for _, unit in pPlayer:GetUnits():Members() do
+    local pPlot = Map.GetPlot(unit:GetX(), unit:GetY());
+    local unitInfo : table = GameInfo.Units[unit:GetUnitType()]
+    local unitGreatPerson = unit:GetGreatPerson()
+
+    -- Code to classify unit stolen from report screen.
+    -- TODO: Separate into more colors?
+    if GameInfo.GreatPersonClasses[unitGreatPerson:GetClass()] then
+      -- Great Person
+      if unitInfo.UnitType == "UNIT_GREAT_GENERAL" or unitInfo.UnitType == "UNIT_GREAT_ADMIRAL" then
+        table.insert(supportHexes, pPlot:GetIndex())
+      else
+        table.insert(civilianHexes, pPlot:GetIndex())
+      end
+    elseif unitInfo.MakeTradeRoute == true then
+      -- Trader
+      table.insert(civilianHexes, pPlot:GetIndex())
+    elseif GameInfo.Units[unitInfo.UnitType].Spy == true then
+      -- Spy
+      table.insert(civilianHexes, pPlot:GetIndex())
+    elseif unit:GetReligiousStrength() > 0 then
+      -- Religious
+      table.insert(civilianHexes, pPlot:GetIndex())
+    elseif unitInfo.FormationClass == "FORMATION_CLASS_CIVILIAN" then
+      -- Other Civilian
+      table.insert(civilianHexes, pPlot:GetIndex())
+    elseif unitInfo.FormationClass == "FORMATION_CLASS_SUPPORT" then
+      -- Support
+      table.insert(supportHexes, pPlot:GetIndex())
+    elseif unit:GetCombat() == 0 and unit:GetRangedCombat() == 0 then
+      -- Other non-combat, can this happen?
+      table.insert(civilianHexes, pPlot:GetIndex())
+    elseif unitInfo.Domain == "DOMAIN_LAND" then
+      -- Land
+      table.insert(unitHexes, pPlot:GetIndex())
+    elseif unitInfo.Domain == "DOMAIN_AIR" then
+      -- Air
+      table.insert(unitHexes, pPlot:GetIndex())
+    elseif unitInfo.Domain == "DOMAIN_SEA" then
+      -- Sea
+      table.insert(unitHexes, pPlot:GetIndex())
+    else
+      -- Fallback, can this happen?
+      table.insert(civilianHexes, pPlot:GetIndex())
+    end
+  end
+
+  if table.count(civilianHexes) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, civilianHexes, civilianPlotColor );
+  end
+  if table.count(supportHexes) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, supportHexes, supportPlotColor );
+  end
+  -- Draw units lasts, so it gets prio if there are multiple on the same tile
+  if table.count(unitHexes) > 0 then
+    UILens.SetLayerHexesColoredArea( LensLayers.HEX_COLORING_APPEAL_LEVEL, localPlayer, unitHexes, unitPlotColor );
+  end
+end
+
 -- Helper functions ===========================================================
 function SetActiveModdedLens(lensID)
   m_CurrentModdedLensOn = lensID;
@@ -2608,6 +2707,7 @@ function OnInterfaceModeChanged(eOldMode:number, eNewMode:number)
       Controls.ArchaeologistLensButton:SetCheck(false);
       Controls.BuilderLensButton:SetCheck(false);
       Controls.NaturalistLensButton:SetCheck(false);
+      Controls.UnitLensButton:SetCheck(false);
 
       -- Side Menus
       Controls.ResourceLensOptionsPanel:SetHide(true);
@@ -2863,6 +2963,7 @@ function Initialize()
   Controls.ArchaeologistLensButton:RegisterCallback( Mouse.eLClick, ToggleArchaeologistLens );
   Controls.BuilderLensButton:RegisterCallback( Mouse.eLClick, ToggleBuilderLens );
   Controls.NaturalistLensButton:RegisterCallback( Mouse.eLClick, ToggleNaturalistLens );
+  Controls.UnitLensButton:RegisterCallback( Mouse.eLClick, ToggleUnitLens );
 
   -- Resource Lens Picker
   Controls.ShowBonusResource:RegisterCallback( Mouse.eLClick, ToggleResourceLens_Bonus );

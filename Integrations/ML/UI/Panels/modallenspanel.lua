@@ -21,6 +21,7 @@ local MODDED_LENS_ID:table = {
 	ADJACENCY_YIELD = 9;
 	SCOUT 			= 10;
 	NATURALIST		= 11;
+	UNIT		= 12;
 };
 
 --============================================================================
@@ -308,6 +309,18 @@ function ShowNaturalistLensKey()
 end
 
 --============================================================================
+function ShowUnitLensKey()
+	m_KeyStackIM: ResetInstances();
+
+	AddKeyEntry("LOC_TOOLTIP_UNIT_LENS_MILITARY", UI.GetColorValue("COLOR_MILITARY_UNIT_LENS"));
+	AddKeyEntry("LOC_TOOLTIP_UNIT_LENS_SUPPORT", UI.GetColorValue("COLOR_SUPPORT_UNIT_LENS"));
+	AddKeyEntry("LOC_TOOLTIP_UNIT_LENS_CIVILIAN", UI.GetColorValue("COLOR_CIVILIAN_UNIT_LENS"));
+
+	Controls.KeyPanel:SetHide(false);
+	Controls.KeyScrollPanel:CalculateSize();
+end
+
+--============================================================================
 function OnAddContinentColorPair( pContinentColors:table )
 	m_ContinentColorList = pContinentColors;
 end
@@ -464,6 +477,9 @@ function OnLensLayerOn( layerNum:number )
 		elseif GetCurrentModdedLens() == MODDED_LENS_ID.NATURALIST then
 			Controls.LensText:SetText(Locale.ToUpper(Locale.Lookup("LOC_HUD_NATURALIST_LENS")));
 			ShowNaturalistLensKey();
+		elseif GetCurrentModdedLens() == MODDED_LENS_ID.UNIT then
+			Controls.LensText:SetText(Locale.ToUpper(Locale.Lookup("LOC_HUD_UNIT_LENS")));
+			ShowUnitLensKey();
 		end
 	elseif layerNum == LensLayers.HEX_COLORING_GOVERNMENT then
 		Controls.LensText:SetText(Locale.ToUpper(Locale.Lookup("LOC_HUD_GOVERNMENT_LENS")));
