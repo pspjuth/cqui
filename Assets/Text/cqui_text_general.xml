@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <GameData>
   <LocalizedText>
     <!-- ENGLISH -->
@@ -28,6 +28,12 @@
     <!-- POPUPS -->
     <Row Tag="LOC_CQUI_GREAT_PERSON_PROGRESS" Language="en_US">
       <Text>Progress:</Text>
+    </Row>
+    <Row Tag="LOC_CQUI_ORIGINAL_OWNER" Language="en_US">
+      <Text>Original Owner: {1_OwnerName}</Text>
+    </Row>
+    <Row Tag="LOC_CQUI_ORIGINAL_OWNER_CAPITAL" Language="en_US">
+      <Text>Original Owner: {1_OwnerName} (Capital)</Text>
     </Row>
 
     <!-- ActionPanel -->

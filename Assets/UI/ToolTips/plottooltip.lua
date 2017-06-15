@@ -224,6 +224,13 @@ function View(data:table, bIsUpdate:boolean)
       szOwnerString2 = string.sub(szOwnerString2,1,cutoff1-1);
     end
     table.insert(details,szOwnerString2);
+    if data.OriginalOwnerName ~= nil then
+      if data.OriginalOwnerCapital then
+        table.insert(details, Locale.Lookup("LOC_CQUI_ORIGINAL_OWNER_CAPITAL", data.OriginalOwnerName));
+      else
+        table.insert(details, Locale.Lookup("LOC_CQUI_ORIGINAL_OWNER", data.OriginalOwnerName));
+      end
+    end
   end
 
   local szTerrainString;
@@ -720,6 +727,16 @@ function ShowPlotInfo( plotId:number, bIsUpdate:boolean )
 
       if (new_data.OwnerCity) then
         new_data.OwningCityName = new_data.OwnerCity:GetName();
+
+        local OriginalOwner = new_data.OwnerCity:GetOriginalOwner();
+        if (new_data.IsCity and OriginalOwner ~= new_data.Owner) then
+          local pPlayerConfig = PlayerConfigurations[OriginalOwner];
+          local pPlayer       = Players[OriginalOwner];
+          if (pPlayerConfig ~= nil) then
+            new_data.OriginalOwnerName = Locale.Lookup(pPlayerConfig:GetCivilizationShortDescription());
+            new_data.OriginalOwnerCapital = pPlayer:IsMajor() and new_data.OwnerCity:IsOriginalCapital();
+          end
+        end
 
         local eDistrictType = plot:GetDistrictType();
         if (eDistrictType) then
