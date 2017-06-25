@@ -1441,7 +1441,7 @@ end
 
 -- ===========================================================================
 function SetNaturalistLens()
-  --print("Show Naturalist lens")
+  print("Show Naturalist lens")
   local localPlayer:number = Game.GetLocalPlayer();
   local parkPlotColor:number = UI.GetColorValue("COLOR_PARK_NATURALIST_LENS");
   local OkColor:number = UI.GetColorValue("COLOR_OK_NATURALIST_LENS");
@@ -1451,45 +1451,97 @@ function SetNaturalistLens()
   local mapWidth, mapHeight = Map.GetGridSize();
   local fixableHexes:table = {};
   local okHexes:table = {};
+  local tiles:table = {};
 
+  -- Collect individual tile data
   for i = 0, (mapWidth * mapHeight) - 1, 1 do
     local pPlot:table = Map.GetPlotByIndex(i);
-    local improve:boolean = false;
-    local good:boolean = false;
+    local data =  {
+      X     = pPlot:GetX(),
+      Y     = pPlot:GetY(),
+      Level = 0,
+      Mine  = true,
+      Use   = false,
+    };
+    -- Level 3 = OK
+    -- Level 2 = Fixable
+    -- Level 1 = Semifixable
 
     -- Base requirements
     if plotHasNaturalWonder(pPlot) then
-      good = true;
+      data.Level = 3;
     elseif plotHasMountain(pPlot) then
-      good = true;
+      data.Level = 3;
     elseif pPlot:GetAppeal() >= 2 then
-      good = true;
+      -- Charming
+      data.Level = 3;
+    elseif pPlot:GetAppeal() >= 1 then
+      -- It is tricky to analyse if a lower appeal is fixable so we
+      -- view it as semifixable without further analysis.
+      data.Level = 1;
     end
-    
+
+    -- An improvement can be removed, downgrade to fixable
+    if data.Level > 2 and plotHasImprovement(pPlot) then
+      data.Level = 2;
+    end
+
+    -- If not owned, downgrade to fixable
+    if pPlot:GetOwner() ~= Game.GetLocalPlayer() then
+      data.Mine = false;
+      if data.Level > 2 then
+        data.Level = 2;
+      end
+    end
+
     -- Blocking changes
     if plotHasWonder(pPlot) then
-      good = false;
+      data.Level = 0;
     elseif plotHasDistrict(pPlot) then
-      good = false;
+      data.Level = 0;
     elseif pPlot:IsNationalPark() then
-      good = false;
+      data.Level = 0;
     end
 
-    -- Obstacles that can be delt with
-    -- An improvement can be removed
-    if plotHasImprovement(pPlot) then
-      improve = true;
+    -- Only keep relevant tiles
+    if data.Level > 0 and localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) then
+      tiles[i] = data;
     end
-    -- Ownership can change
-    if pPlot:GetOwner() ~= Game.GetLocalPlayer() then
-      improve = true;
-    end
+  end
 
-    if good and localPlayerVis:IsRevealed(pPlot:GetX(), pPlot:GetY()) then
-      if improve then
-        table.insert(fixableHexes, i)
-      else
+  -- Mark those that are interesting
+  -- They must belong to a diamond where all four are at least semifixable.
+  for i, data in pairs(tiles) do
+    -- Figure out a diamond going up from this tile
+    local p1:table = Map.GetPlot(data.X + data.Y % 2 - 1, data.Y + 1);
+    local p2:table = Map.GetPlot(data.X + data.Y % 2,     data.Y + 1);
+    local p3:table = Map.GetPlot(data.X, data.Y + 2);
+
+    -- All three must exist
+    if p1 ~= nil and p2 ~= nil and p3 ~= nil then
+      local i1 = p1:GetIndex();
+      local i2 = p2:GetIndex();
+      local i3 = p3:GetIndex();
+      -- All three must have stored data
+      if tiles[i1] ~= nil and tiles[i2] ~= nil and tiles[i3] ~= nil then
+        -- At least one must be owned
+        if tiles[i].Mine or tiles[i1].Mine or tiles[i2].Mine or tiles[i3].Mine then
+          tiles[i].Use  = true;
+          tiles[i1].Use = true;
+          tiles[i2].Use = true;
+          tiles[i3].Use = true;
+        end
+      end
+    end
+  end
+
+  -- Extract info
+  for i, data in pairs(tiles) do
+    if tiles[i].Use then
+      if tiles[i].Level == 3 then
         table.insert(okHexes, i)
+      elseif tiles[i].Level == 2 then
+        table.insert(fixableHexes, i)
       end
     end
   end
